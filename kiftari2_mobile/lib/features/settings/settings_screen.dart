@@ -171,7 +171,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               subtitle: const Text("Sign out from your account"),
               onTap: () async {
                 await TokenService.clearAll();
-                if (!mounted) return;
+                if (!context.mounted) return; // FIX: guard context after async
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (_) => const WelcomeScreen()),

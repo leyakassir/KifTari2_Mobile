@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.kiftari2_mobile"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36 // FIX: align with updated plugin SDK requirement to remove warning
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -27,7 +27,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36 // FIX: align with updated plugin SDK requirement to remove warning
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

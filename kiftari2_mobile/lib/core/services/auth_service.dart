@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer; // FIX: use logger instead of print
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
 import 'token_service.dart';
@@ -10,7 +11,7 @@ class AuthService {
     required String email,
     required String password,
   }) async {
-    print("LOGIN API CALL");
+    developer.log("LOGIN API CALL"); // FIX: avoid print in production
     final fcmToken = await NotificationService.getToken();
     final payload = {
       "email": email,
@@ -22,7 +23,7 @@ class AuthService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode(payload),
     );
-    print("LOGIN STATUS: ${response.statusCode}");
+    developer.log("LOGIN STATUS: ${response.statusCode}"); // FIX: avoid print in production
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);

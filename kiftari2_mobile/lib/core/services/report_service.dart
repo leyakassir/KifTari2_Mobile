@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer; // FIX: use logger instead of print
 import 'dart:io';
 import 'package:http/http.dart' as http;
 
@@ -46,8 +47,8 @@ class ReportService {
       }),
     );
 
-    print("STATUS CODE: ${response.statusCode}");
-    print("RESPONSE BODY: ${response.body}");
+    developer.log("STATUS CODE: ${response.statusCode}"); // FIX: avoid print in production
+    developer.log("RESPONSE BODY: ${response.body}"); // FIX: avoid print in production
 
     Map<String, dynamic> decoded = {};
     try {

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:app_links/app_links.dart';
 import '../../core/services/token_service.dart';
 import '../../core/services/notification_service.dart';
+import '../auth/verify_email/verify_email_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -10,11 +12,40 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  final AppLinks _appLinks = AppLinks();
+
   @override
   void initState() {
     super.initState();
     NotificationService.initialize();
-    _checkAuth();
+    _init();
+  }
+
+  Future<void> _init() async {
+    final handled = await _handleDeepLink();
+    if (handled) return;
+    await _checkAuth();
+  }
+
+  Future<bool> _handleDeepLink() async {
+    try {
+      final uri = await _appLinks.getInitialLink();
+      if (uri == null) return false;
+      if (uri.path.contains("verify-email")) {
+        if (!mounted) return true;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerifyEmailScreen(
+              initialLink: uri.toString(),
+              autoRedirect: true,
+            ),
+          ),
+        );
+        return true;
+      }
+    } catch (_) {}
+    return false;
   }
 
   Future<void> _checkAuth() async {

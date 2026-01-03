@@ -242,7 +242,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 onPressed: () async {
                   await TokenService.clearAll();
-                  if (!mounted) return;
+                  if (!context.mounted) return; // FIX: guard context after async
                   Navigator.pushNamedAndRemoveUntil(
                     context,
                     "/login",
@@ -553,7 +553,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     onPressed: () async {
                       await TokenService.clearAll();
-                      if (!mounted) return;
+                      if (!context.mounted) return; // FIX: guard context after async
                       Navigator.pushNamedAndRemoveUntil(
                         context,
                         "/login",

@@ -45,7 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final token = await TokenService.getToken();
       final role = await TokenService.getRole();
 
-      if (!mounted) return;
+      if (!mounted) return; // FIX: guard context after async
 
       if (success && token != null) {
         if (role == "employer") {
@@ -57,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
         }
       } else {
         await TokenService.clearAll();
+        if (!mounted) return; // FIX: guard context after async
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Invalid email or password")),
         );
@@ -64,13 +65,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       await TokenService.clearAll();
 
-      if (!mounted) return;
+      if (!mounted) return; // FIX: guard context after async
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString())),
       );
     } finally {
-      if (mounted) {
+      if (mounted) { // FIX: guard setState after async
         setState(() => _loading = false);
       }
     }

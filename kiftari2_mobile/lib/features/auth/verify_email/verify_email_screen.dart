@@ -6,7 +6,14 @@ import '../../../core/config/api_config.dart';
 import '../../../core/services/token_service.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
-  const VerifyEmailScreen({super.key});
+  final String? initialLink;
+  final bool autoRedirect;
+
+  const VerifyEmailScreen({
+    super.key,
+    this.initialLink,
+    this.autoRedirect = false,
+  });
 
   @override
   State<VerifyEmailScreen> createState() => _VerifyEmailScreenState();
@@ -15,6 +22,17 @@ class VerifyEmailScreen extends StatefulWidget {
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final TextEditingController _tokenController = TextEditingController();
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialLink != null && widget.initialLink!.isNotEmpty) {
+      _tokenController.text = widget.initialLink!;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _verify();
+      });
+    }
+  }
 
   Future<void> _verify() async {
     if (_loading) return;
@@ -52,7 +70,11 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
         SnackBar(content: Text(message)),
       );
       if (verified) {
-        Navigator.pop(context, true);
+        if (widget.autoRedirect) {
+          Navigator.pushReplacementNamed(context, "/login");
+        } else {
+          Navigator.pop(context, true);
+        }
       }
     } catch (_) {
       if (!mounted) return;

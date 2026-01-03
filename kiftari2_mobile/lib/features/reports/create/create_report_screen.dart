@@ -45,6 +45,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       return;
     }
 
+    if (!mounted) return; // FIX: guard context after async
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -162,6 +163,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   }
 
   void _toast(String msg) {
+    if (!mounted) return; // FIX: guard context after async
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(msg)));
   }
