@@ -85,7 +85,7 @@ class ReportDetailsScreen extends StatelessWidget {
                       Icon(Icons.star, size: 18, color: scheme.primary),
                       const SizedBox(width: 8),
                       Text(
-                        "+20 points earned",
+                        "+10 points earned",
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
