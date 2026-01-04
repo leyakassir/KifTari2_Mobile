@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
@@ -30,19 +27,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _municipalityLoading = false;
   bool _profileLoading = true;
   int _points = 0;
-  int _resendCooldown = 0;
-  bool _resendLoading = false;
-  Timer? _resendTimer;
-
-  static const int _resendCooldownSeconds = 60;
-  static const String _resendCooldownKey = "resend_verification_ts";
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _loadUser();
-    _loadResendCooldown();
 }
 
   @override
@@ -55,7 +45,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _resendTimer?.cancel();
     super.dispose();
   }
 
@@ -84,9 +73,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
     });
 
-    if (!_emailVerified) {
-      await _refreshUserFromServer();
-    }
+    await _refreshUserFromServer();
 
     if (_role == "field_operator" && _municipality.isEmpty) {
       if (_municipalityId.isNotEmpty) {
@@ -124,60 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<void> _refreshProfile() async {
     await ReportService.syncQueuedReports();
     await _loadUser();
-  }
-
-  Future<void> _loadResendCooldown() async {
-    final prefs = await SharedPreferences.getInstance();
-    final last = prefs.getInt(_resendCooldownKey) ?? 0;
-    if (last == 0) return;
-
-    final elapsed =
-        (DateTime.now().millisecondsSinceEpoch - last) ~/ 1000;
-    if (elapsed >= _resendCooldownSeconds) return;
-    _startResendCooldown(_resendCooldownSeconds - elapsed);
-  }
-
-  void _startResendCooldown(int seconds) {
-    _resendTimer?.cancel();
-    setState(() => _resendCooldown = seconds);
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      if (_resendCooldown <= 1) {
-        timer.cancel();
-        setState(() => _resendCooldown = 0);
-      } else {
-        setState(() => _resendCooldown -= 1);
-      }
-    });
-  }
-
-  Future<void> _resendVerificationEmail() async {
-    if (_resendLoading || _resendCooldown > 0) return;
-    setState(() => _resendLoading = true);
-
-    final success = await AuthService.resendVerificationEmail();
-    if (!mounted) return;
-
-    setState(() => _resendLoading = false);
-    if (success) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(
-        _resendCooldownKey,
-        DateTime.now().millisecondsSinceEpoch,
-      );
-      if (!mounted) return;
-      _startResendCooldown(_resendCooldownSeconds);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Verification email sent")),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Failed to resend email")),
-      );
-    }
   }
 
   Future<void> _loadMunicipalityFromId() async {
@@ -233,38 +166,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     return "New Reporter";
   }
 
-  Widget _resendEmailButton(BuildContext context) {
-    if (_emailVerified) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final isDisabled = _resendCooldown > 0 || _resendLoading;
-    final label = _resendCooldown > 0
-        ? "Resend in ${_resendCooldown}s"
-        : "Resend verification email";
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-      child: SizedBox(
-        width: double.infinity,
-        child: TextButton.icon(
-          onPressed: isDisabled ? null : _resendVerificationEmail,
-          icon: _resendLoading
-              ? SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: scheme.primary,
-                  ),
-                )
-              : Icon(Icons.send, color: scheme.primary),
-          label: Text(
-            label,
-            style: TextStyle(color: scheme.primary),
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -468,7 +369,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                       });
                     },
                   ),
-                  _resendEmailButton(context),
                 ],
               ),
             ),
@@ -671,7 +571,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                           });
                         },
                       ),
-                      _resendEmailButton(context),
                     ],
                   ),
                 ),

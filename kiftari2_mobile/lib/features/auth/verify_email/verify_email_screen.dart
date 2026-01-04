@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/config/api_config.dart';
+import '../../../core/services/auth_service.dart';
 import '../../../core/services/token_service.dart';
 
 class VerifyEmailScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class VerifyEmailScreen extends StatefulWidget {
 class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
   final TextEditingController _tokenController = TextEditingController();
   bool _loading = false;
+  bool _resendLoading = false;
 
   @override
   void initState() {
@@ -84,6 +86,21 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _resend() async {
+    if (_resendLoading) return;
+    setState(() => _resendLoading = true);
+    final success = await AuthService.resendVerificationEmail();
+    if (!mounted) return;
+    setState(() => _resendLoading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? "Verification email sent" : "Failed to resend email",
+        ),
+      ),
+    );
   }
 
   @override
@@ -194,6 +211,17 @@ class _VerifyEmailScreenState extends State<VerifyEmailScreen> {
                         ),
                       ),
               ),
+            ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _resendLoading ? null : _resend,
+              child: _resendLoading
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text("Resend verification email"),
             ),
           ],
         ),
