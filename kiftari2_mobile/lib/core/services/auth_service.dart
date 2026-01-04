@@ -129,6 +129,45 @@ class AuthService {
     return response.statusCode == 200;
   }
 
+  // ================= UPDATE PROFILE =================
+  static Future<Map<String, dynamic>> updateProfile({
+    String? email,
+    String? phone,
+  }) async {
+    final jwt = await TokenService.getToken();
+    if (jwt == null) {
+      return {"success": false, "message": "User not authenticated"};
+    }
+
+    final payload = <String, dynamic>{};
+    if (email != null && email.trim().isNotEmpty) {
+      payload["email"] = email.trim();
+    }
+    if (phone != null && phone.trim().isNotEmpty) {
+      payload["phone"] = phone.trim();
+    }
+
+    final response = await http.patch(
+      Uri.parse("${ApiConfig.baseUrl}/auth/profile"),
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer $jwt",
+      },
+      body: jsonEncode(payload),
+    );
+
+    Map<String, dynamic> decoded = {};
+    try {
+      decoded = jsonDecode(response.body);
+    } catch (_) {}
+
+    return {
+      "success": response.statusCode == 200,
+      "message": decoded["message"] ?? "Failed to update profile",
+      "data": decoded,
+    };
+  }
+
   // ================= REGISTER (CITIZEN ONLY) =================
   static Future<bool> registerCitizen({
     required String firstName,

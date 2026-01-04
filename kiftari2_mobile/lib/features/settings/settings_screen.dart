@@ -17,11 +17,22 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool notificationsEnabled = true;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
+  bool _accountLoading = false;
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadAccount();
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _phoneController.dispose();
+    super.dispose();
   }
 
   // ================= LOAD / SAVE =================
@@ -32,10 +43,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
       notificationsEnabled = prefs.getBool("notifications") ?? true;
     });
   }
+
+  Future<void> _loadAccount() async {
+    final email = await TokenService.getEmail();
+    final phone = await TokenService.getPhone();
+    if (!mounted) return;
+    setState(() {
+      _emailController.text = email;
+      _phoneController.text = phone;
+    });
+  }
   
   Future<void> _saveNotifications(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool("notifications", value);
+  }
+
+  Future<void> _saveAccount() async {
+    if (_accountLoading) return;
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+
+    if (email.isEmpty && phone.isEmpty) {
+      _toast("Please enter email or phone");
+      return;
+    }
+
+    setState(() => _accountLoading = true);
+    final result = await AuthService.updateProfile(
+      email: email,
+      phone: phone,
+    );
+
+    if (!mounted) return;
+    setState(() => _accountLoading = false);
+
+    if (result["success"] == true) {
+      final data = result["data"];
+      final user = data is Map ? data["user"] : null;
+      if (user is Map) {
+        await TokenService.saveEmail(user["email"]?.toString());
+        await TokenService.savePhone(user["phone"]?.toString());
+        final emailVerified = user["emailVerified"];
+        if (emailVerified is bool) {
+          await TokenService.saveEmailVerified(emailVerified);
+        }
+      }
+      _toast("Profile updated");
+    } else {
+      _toast(result["message"]?.toString() ?? "Update failed");
+    }
   }
 
   // ================= UI =================
@@ -63,6 +120,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
         children: [
+          _sectionTitle("Account"),
+          _card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: const InputDecoration(
+                      labelText: "Email",
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: "Phone",
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _accountLoading ? null : _saveAccount,
+                      child: _accountLoading
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text("Save Changes"),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "If you change your email, you'll need to verify it again.",
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
           _sectionTitle("Appearance"),
           _card(
             child: SwitchListTile(
@@ -240,5 +346,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  void _toast(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
