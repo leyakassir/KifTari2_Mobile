@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/services/auth_service.dart';
 import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
 import '../notifications/notifications_screen.dart';
@@ -57,6 +58,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     });
 
+    if (!_emailVerified) {
+      await _refreshUserFromServer();
+    }
+
     if (_role == "field_operator" && _municipality.isEmpty) {
       if (_municipalityId.isNotEmpty) {
         await _loadMunicipalityFromId();
@@ -64,6 +69,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
         await _loadMunicipalityFromAssignments();
       }
     }
+  }
+
+  Future<void> _refreshUserFromServer() async {
+    final refreshed = await AuthService.refreshCurrentUser();
+    if (!refreshed) return;
+
+    final name = await TokenService.getUserDisplayName();
+    final role = await TokenService.getRole();
+    final email = await TokenService.getEmail();
+    final phone = await TokenService.getPhone();
+    final municipalityId = await TokenService.getMunicipalityId();
+    final emailVerified = await TokenService.getEmailVerified();
+    final points = await TokenService.getPoints();
+
+    if (!mounted) return;
+    setState(() {
+      _name = name.trim();
+      _role = role ?? _role;
+      _email = email.trim();
+      _phone = phone.trim();
+      _municipalityId = municipalityId.trim();
+      _emailVerified = emailVerified;
+      _points = points;
+    });
   }
 
   Future<void> _loadMunicipalityFromId() async {

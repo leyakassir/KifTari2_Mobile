@@ -72,6 +72,50 @@ class AuthService {
     throw Exception(message);
   }
 
+  // ================= CURRENT USER =================
+  static Future<bool> refreshCurrentUser() async {
+    final jwt = await TokenService.getToken();
+    if (jwt == null) return false;
+
+    final response = await http.get(
+      Uri.parse("${ApiConfig.baseUrl}/auth/me"),
+      headers: {"Authorization": "Bearer $jwt"},
+    );
+
+    if (response.statusCode != 200) {
+      return false;
+    }
+
+    final data = jsonDecode(response.body);
+    final user = data is Map ? data["user"] : null;
+    if (user is! Map) return false;
+
+    final firstName = user["firstName"]?.toString() ?? "";
+    final lastName = user["lastName"]?.toString() ?? "";
+    if (firstName.isNotEmpty || lastName.isNotEmpty) {
+      await TokenService.saveUserName("$firstName $lastName".trim());
+    }
+
+    await TokenService.saveEmail(user["email"]?.toString());
+    await TokenService.savePhone(user["phone"]?.toString());
+    await TokenService.saveRole(user["role"]?.toString() ?? "citizen");
+    await TokenService.saveMunicipalityId(
+      user["municipalityId"]?.toString(),
+    );
+
+    final emailVerifiedValue = user["emailVerified"];
+    if (emailVerifiedValue is bool) {
+      await TokenService.saveEmailVerified(emailVerifiedValue);
+    }
+
+    final pointsValue = user["points"];
+    if (pointsValue is num) {
+      await TokenService.savePoints(pointsValue.toInt());
+    }
+
+    return true;
+  }
+
   // ================= REGISTER (CITIZEN ONLY) =================
   static Future<bool> registerCitizen({
     required String firstName,
