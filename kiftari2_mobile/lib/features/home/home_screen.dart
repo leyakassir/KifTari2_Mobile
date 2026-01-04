@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../core/services/auth_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
 
@@ -20,6 +22,22 @@ class _HomeScreenState extends State<HomeScreen> {
     _reportsFuture = ReportService.getMyReports();
     _loadName();
     _loadPoints();
+    _refreshUser();
+    NotificationService.consumePendingNotification();
+  }
+
+  Future<void> _refreshUser() async {
+    await AuthService.refreshCurrentUser();
+    await _loadName();
+    await _loadPoints();
+  }
+
+  Future<void> _refresh() async {
+    setState(() {
+      _reportsFuture = ReportService.getMyReports();
+    });
+    await _reportsFuture;
+    await _refreshUser();
   }
 
   Future<void> _loadName() async {
@@ -57,11 +75,14 @@ class _HomeScreenState extends State<HomeScreen> {
             final resolved =
                 reports.where((r) => r["status"] == "resolved").length;
             final pending = total - resolved;
-            final points = _points;
+          final points = _points;
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.only(bottom: 32),
-              child: Column(
+          return RefreshIndicator(
+              onRefresh: _refresh,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 32),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // 🔵 HEADER
@@ -236,6 +257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
+            ),
             );
           },
         ),
