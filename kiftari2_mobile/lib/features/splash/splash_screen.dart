@@ -18,11 +18,14 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    NotificationService.initialize();
     _init();
   }
 
   Future<void> _init() async {
+    await NotificationService.initialize();
+    if (await NotificationService.consumePendingNotification()) {
+      return;
+    }
     final handled = await _handleDeepLink();
     if (handled) return;
     await ReportService.syncQueuedReports();

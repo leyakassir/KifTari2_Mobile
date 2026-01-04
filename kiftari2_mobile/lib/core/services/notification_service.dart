@@ -29,6 +29,7 @@ class NotificationService {
 
   static bool _initialized = false;
   static const String _prefsKey = "notifications";
+  static const String _pendingNotificationKey = "pending_notification_report_id";
 
   static Future<void> initialize() async {
     if (_initialized) return;
@@ -155,7 +156,16 @@ class NotificationService {
     if (reportId == null || reportId.isEmpty) return;
 
     final nav = await _waitForNavigator();
-    if (nav == null) return;
+    if (nav == null) {
+      await _storePendingReportId(reportId);
+      return;
+    }
+
+    final token = await TokenService.getToken();
+    if (token == null) {
+      await _storePendingReportId(reportId);
+      return;
+    }
 
     final role = await TokenService.getRole();
     if (role == "field_operator") {
@@ -181,6 +191,20 @@ class NotificationService {
         ),
       );
     } catch (_) {}
+  }
+
+  static Future<bool> consumePendingNotification() async {
+    final prefs = await SharedPreferences.getInstance();
+    final reportId = prefs.getString(_pendingNotificationKey);
+    if (reportId == null || reportId.isEmpty) return false;
+    await prefs.remove(_pendingNotificationKey);
+    await _handleNotificationData({"reportId": reportId});
+    return true;
+  }
+
+  static Future<void> _storePendingReportId(String reportId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_pendingNotificationKey, reportId);
   }
 
   static Future<NavigatorState?> _waitForNavigator() async {
