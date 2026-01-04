@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:developer' as developer; // FIX: use logger instead of print
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/api_config.dart';
 import 'token_service.dart';
 
 class ReportService {
+  static const _queuedReportsKey = "queued_reports";
+
   // ==================================================
   // CREATE REPORT (JSON + optional base64 image)
   // ==================================================
@@ -16,6 +19,7 @@ class ReportService {
     required double latitude,
     required double longitude,
     File? imageFile,
+    String? base64Image,
   }) async {
     final token = await TokenService.getToken();
 
@@ -26,26 +30,35 @@ class ReportService {
       };
     }
 
-    String? base64Image;
-    if (imageFile != null) {
+    if (base64Image == null && imageFile != null) {
       final bytes = await imageFile.readAsBytes();
       base64Image = base64Encode(bytes);
     }
 
-    final response = await http.post(
-      Uri.parse("${ApiConfig.baseUrl}/reports/create"),
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer $token",
-      },
-      body: jsonEncode({
-        "title": title,
-        "description": description,
-        "latitude": latitude,
-        "longitude": longitude,
-        if (base64Image != null) "base64Image": base64Image,
-      }),
-    );
+    http.Response response;
+    try {
+      response = await http.post(
+        Uri.parse("${ApiConfig.baseUrl}/reports/create"),
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer $token",
+        },
+        body: jsonEncode({
+          "title": title,
+          "description": description,
+          "latitude": latitude,
+          "longitude": longitude,
+          if (base64Image != null) "base64Image": base64Image,
+        }),
+      );
+    } catch (error) {
+      return {
+        "success": false,
+        "offline": true,
+        "message": "Network error. Try again later.",
+        "error": error.toString(),
+      };
+    }
 
     developer.log("STATUS CODE: ${response.statusCode}"); // FIX: avoid print in production
     developer.log("RESPONSE BODY: ${response.body}"); // FIX: avoid print in production
@@ -315,5 +328,113 @@ class ReportService {
     } catch (_) {}
 
     throw Exception("$message (HTTP ${response.statusCode})");
+  }
+
+  // ==================================================
+  // OFFLINE QUEUE
+  // ==================================================
+  static Future<void> queueReport({
+    required String title,
+    required String description,
+    required double latitude,
+    required double longitude,
+    File? imageFile,
+  }) async {
+    String? base64Image;
+    if (imageFile != null) {
+      final bytes = await imageFile.readAsBytes();
+      base64Image = base64Encode(bytes);
+    }
+
+    final payload = {
+      "title": title,
+      "description": description,
+      "latitude": latitude,
+      "longitude": longitude,
+      if (base64Image != null) "base64Image": base64Image,
+      "createdAt": DateTime.now().toIso8601String(),
+    };
+
+    final existing = await _loadQueuedReports();
+    existing.add(payload);
+    await _saveQueuedReports(existing);
+  }
+
+  static Future<int> syncQueuedReports() async {
+    final queued = await _loadQueuedReports();
+    if (queued.isEmpty) return 0;
+
+    final remaining = <Map<String, dynamic>>[];
+    var synced = 0;
+
+    for (var i = 0; i < queued.length; i += 1) {
+      final item = queued[i];
+      final title = item["title"]?.toString() ?? "";
+      final description = item["description"]?.toString() ?? "";
+      final latitude = (item["latitude"] is num)
+          ? (item["latitude"] as num).toDouble()
+          : double.tryParse(item["latitude"]?.toString() ?? "");
+      final longitude = (item["longitude"] is num)
+          ? (item["longitude"] as num).toDouble()
+          : double.tryParse(item["longitude"]?.toString() ?? "");
+      final base64Image = item["base64Image"]?.toString();
+
+      if (title.isEmpty || description.isEmpty) {
+        continue;
+      }
+      if (latitude == null || longitude == null) {
+        continue;
+      }
+
+      final result = await createReport(
+        title: title,
+        description: description,
+        latitude: latitude,
+        longitude: longitude,
+        base64Image: base64Image,
+      );
+
+      if (result["success"] == true) {
+        synced += 1;
+        continue;
+      }
+
+      if (result["offline"] == true) {
+        remaining.add(item);
+        if (i + 1 < queued.length) {
+          remaining.addAll(queued.sublist(i + 1));
+        }
+        break;
+      }
+
+      remaining.add(item);
+    }
+
+    await _saveQueuedReports(remaining);
+    return synced;
+  }
+
+  static Future<List<Map<String, dynamic>>> _loadQueuedReports() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_queuedReportsKey);
+    if (raw == null || raw.isEmpty) return [];
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is List) {
+        return decoded
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  static Future<void> _saveQueuedReports(
+    List<Map<String, dynamic>> reports,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_queuedReportsKey, jsonEncode(reports));
   }
 }

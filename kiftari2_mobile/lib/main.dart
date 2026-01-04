@@ -4,6 +4,7 @@ import 'features/welcome/welcome_screen.dart';
 import 'features/auth/login/login_screen.dart';
 import 'features/splash/splash_screen.dart';
 import 'layout/main_layout.dart';
+import 'core/navigation/app_navigator.dart';
 import 'theme/theme_provider.dart';
 
 void main() {
@@ -23,6 +24,7 @@ class KifTari2App extends StatelessWidget {
     final themeProvider = context.watch<ThemeProvider>();
 
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: themeProvider.lightTheme,
       darkTheme: themeProvider.darkTheme,

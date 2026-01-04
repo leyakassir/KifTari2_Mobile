@@ -31,6 +31,12 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   final ImagePicker picker = ImagePicker();
 
   @override
+  void initState() {
+    super.initState();
+    ReportService.syncQueuedReports();
+  }
+
+  @override
   void dispose() {
     titleController.dispose();
     descriptionController.dispose();
@@ -158,8 +164,49 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         ),
       );
     } else {
-      _toast(result["message"] ?? "Submission failed");
+      await _offerOfflineSave(result["message"]?.toString());
     }
+  }
+
+  Future<void> _offerOfflineSave(String? message) async {
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Submission failed"),
+          content: Text(
+            message?.isNotEmpty == true
+                ? "$message\n\nSave this report and retry later?"
+                : "Save this report and retry later?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text("Discard"),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSave != true) {
+      _toast(message ?? "Submission failed");
+      return;
+    }
+
+    await ReportService.queueReport(
+      title: titleController.text.trim(),
+      description: descriptionController.text.trim(),
+      latitude: latitude ?? 0,
+      longitude: longitude ?? 0,
+      imageFile: imageFile,
+    );
+    if (!mounted) return;
+    _toast("Saved offline. We'll retry automatically.");
   }
 
   void _toast(String msg) {

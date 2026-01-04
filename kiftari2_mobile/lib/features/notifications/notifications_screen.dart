@@ -5,7 +5,10 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/config/api_config.dart';
+import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
+import '../field_operator/details/field_operator_report_details_screen.dart';
+import '../reports/details/report_details_screen.dart';
 import 'notification_permission_widget.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -62,6 +65,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         .toList();
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _notificationsFuture = _fetchNotifications();
+    });
+    await _notificationsFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -88,28 +98,32 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
           final notifications = snapshot.data ?? [];
 
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-            children: [
-              NotificationPermissionWidget(
-                notificationsEnabled: _notificationsEnabled,
-                onEnablePressed: () {},
-              ),
-              if (notifications.isEmpty)
-                Center(
-                  child: Text(
-                    "No notifications yet",
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                )
-              else
-                ...notifications.map(
-                  (item) => _notificationCard(
-                    context,
-                    item,
-                  ),
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              children: [
+                NotificationPermissionWidget(
+                  notificationsEnabled: _notificationsEnabled,
+                  onEnablePressed: () {},
                 ),
-            ],
+                if (notifications.isEmpty)
+                  Center(
+                    child: Text(
+                      "No notifications yet",
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  )
+                else
+                  ...notifications.map(
+                    (item) => _notificationCard(
+                      context,
+                      item,
+                    ),
+                  ),
+              ],
+            ),
           );
         },
       ),
@@ -137,56 +151,96 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       "",
     );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.outline,
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(
-            _iconFor(item),
-            color: scheme.primary,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                if (message.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    message,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-                if (createdAt.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    _formatDate(createdAt),
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ],
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: () => _openNotification(item),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: scheme.outline,
+              blurRadius: 8,
+              offset: const Offset(0, 4),
             ),
-          ),
-        ],
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(
+              _iconFor(item),
+              color: scheme.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  if (message.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      message,
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                  if (createdAt.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      _formatDate(createdAt),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _openNotification(Map<String, dynamic> item) async {
+    final data = item["data"];
+    if (data is! Map) return;
+
+    final reportId = data["reportId"]?.toString();
+    if (reportId == null || reportId.isEmpty) return;
+
+    final role = await TokenService.getRole();
+    if (!mounted) return;
+
+    if (role == "field_operator") {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FieldOperatorReportDetailsScreen(reportId: reportId),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final report = await ReportService.getReportById(reportId);
+      if (!report.containsKey("municipality") &&
+          report["municipalityId"] != null) {
+        report["municipality"] = report["municipalityId"];
+      }
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ReportDetailsScreen(report: report),
+        ),
+      );
+    } catch (_) {}
   }
 
   String _readString(

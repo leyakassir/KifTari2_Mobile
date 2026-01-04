@@ -1,7 +1,15 @@
+import 'dart:convert';
+
+import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../core/navigation/app_navigator.dart';
+import '../../core/services/report_service.dart';
+import '../../core/services/token_service.dart';
+import '../../features/field_operator/details/field_operator_report_details_screen.dart';
+import '../../features/reports/details/report_details_screen.dart';
 
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -29,17 +37,25 @@ class NotificationService {
     FirebaseMessaging.onBackgroundMessage(
       firebaseMessagingBackgroundHandler,
     );
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      _handleRemoteMessage(message);
+    });
 
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
     const iosSettings = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(
+    final initSettings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
 
-    await _localNotifications.initialize(initSettings);
+    await _localNotifications.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (response) {
+        _handleNotificationPayload(response.payload);
+      },
+    );
     await _localNotifications
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
@@ -53,7 +69,11 @@ class NotificationService {
     }
 
     FirebaseMessaging.onMessage.listen(_showForegroundNotification);
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {});
+
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) {
+      await _handleRemoteMessage(initialMessage);
+    }
 
     _initialized = true;
   }
@@ -106,7 +126,69 @@ class NotificationService {
         android: androidDetails,
         iOS: iosDetails,
       ),
-      payload: message.data.isNotEmpty ? message.data.toString() : null,
+      payload: message.data.isNotEmpty ? jsonEncode(message.data) : null,
     );
+  }
+
+  static Future<void> _handleRemoteMessage(RemoteMessage message) async {
+    if (message.data.isEmpty) return;
+    await _handleNotificationData(message.data);
+  }
+
+  static Future<void> _handleNotificationPayload(String? payload) async {
+    if (payload == null || payload.isEmpty) return;
+    try {
+      final decoded = jsonDecode(payload);
+      if (decoded is Map) {
+        final data = decoded.map(
+          (key, value) => MapEntry(key.toString(), value),
+        );
+        await _handleNotificationData(data);
+      }
+    } catch (_) {}
+  }
+
+  static Future<void> _handleNotificationData(
+    Map<String, dynamic> data,
+  ) async {
+    final reportId = data["reportId"]?.toString();
+    if (reportId == null || reportId.isEmpty) return;
+
+    final nav = await _waitForNavigator();
+    if (nav == null) return;
+
+    final role = await TokenService.getRole();
+    if (role == "field_operator") {
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => FieldOperatorReportDetailsScreen(
+            reportId: reportId,
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final report = await ReportService.getReportById(reportId);
+      if (!report.containsKey("municipality") &&
+          report["municipalityId"] != null) {
+        report["municipality"] = report["municipalityId"];
+      }
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => ReportDetailsScreen(report: report),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  static Future<NavigatorState?> _waitForNavigator() async {
+    for (var i = 0; i < 5; i += 1) {
+      final nav = appNavigatorKey.currentState;
+      if (nav != null) return nav;
+      await Future.delayed(const Duration(milliseconds: 200));
+    }
+    return null;
   }
 }

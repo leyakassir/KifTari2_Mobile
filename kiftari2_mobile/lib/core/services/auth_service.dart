@@ -116,6 +116,19 @@ class AuthService {
     return true;
   }
 
+  // ================= RESEND VERIFICATION =================
+  static Future<bool> resendVerificationEmail() async {
+    final jwt = await TokenService.getToken();
+    if (jwt == null) return false;
+
+    final response = await http.post(
+      Uri.parse("${ApiConfig.baseUrl}/auth/resend-verification"),
+      headers: {"Authorization": "Bearer $jwt"},
+    );
+
+    return response.statusCode == 200;
+  }
+
   // ================= REGISTER (CITIZEN ONLY) =================
   static Future<bool> registerCitizen({
     required String firstName,

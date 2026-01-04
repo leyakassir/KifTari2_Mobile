@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:app_links/app_links.dart';
+import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
 import '../../core/services/notification_service.dart';
 import '../auth/verify_email/verify_email_screen.dart';
@@ -24,6 +25,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Future<void> _init() async {
     final handled = await _handleDeepLink();
     if (handled) return;
+    await ReportService.syncQueuedReports();
     await _checkAuth();
   }
 

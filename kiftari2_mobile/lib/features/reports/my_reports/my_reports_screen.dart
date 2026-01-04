@@ -19,6 +19,13 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     _reportsFuture = ReportService.getMyReports();
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _reportsFuture = ReportService.getMyReports();
+    });
+    await _reportsFuture;
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -69,21 +76,30 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
 
           // 🟡 EMPTY STATE
           if (reports.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+            return RefreshIndicator(
+              onRefresh: _refresh,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 children: [
-                  Icon(
-                    Icons.assignment_outlined,
-                    size: 64,
-                    color: scheme.onSurface,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    "No reports submitted yet",
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: scheme.onSurface,
+                  SizedBox(
+                    height: MediaQuery.of(context).size.height * 0.6,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assignment_outlined,
+                          size: 64,
+                          color: scheme.onSurface,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          "No reports submitted yet",
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -91,13 +107,16 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-            itemCount: reports.length,
-            itemBuilder: (context, index) {
-              final report = reports[index];
+          return RefreshIndicator(
+            onRefresh: _refresh,
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              itemCount: reports.length,
+              itemBuilder: (context, index) {
+                final report = reports[index];
 
-              return Container(
+                return Container(
                 margin: const EdgeInsets.only(bottom: 14),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -168,6 +187,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                 ),
               );
             },
+          ),
           );
         },
       ),
