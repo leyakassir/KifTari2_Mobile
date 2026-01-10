@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../auth/login/login_screen.dart';
 import '../../auth/register/register_screen.dart';
+import '../ai/guest_ai_screen.dart';
 
 class GuestHomeScreen extends StatelessWidget {
   const GuestHomeScreen({super.key});
@@ -126,6 +127,29 @@ class GuestHomeScreen extends StatelessWidget {
             title: "Ready to report?",
             description:
                 "Create an account to submit reports and track progress.",
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const GuestAiScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              "Ask AI About KifTari2",
+              style: textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
