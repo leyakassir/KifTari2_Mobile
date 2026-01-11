@@ -65,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacementNamed(context, "/home");
     } else {
       // ❌ Not logged in
-      Navigator.pushReplacementNamed(context, "/login");
+      Navigator.pushReplacementNamed(context, "/welcome");
     }
   }
 
@@ -107,3 +107,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

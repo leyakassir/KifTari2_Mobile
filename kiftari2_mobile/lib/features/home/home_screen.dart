@@ -3,6 +3,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/report_service.dart';
 import '../../core/services/token_service.dart';
+import '../ai/citizen_ai_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -180,6 +181,80 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: Icons.hourglass_top,
                         ),
                       ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CitizenAiScreen(),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(18),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color: scheme.surface,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: scheme.outlineVariant,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: scheme.primaryContainer,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(
+                                Icons.smart_toy_outlined,
+                                color: scheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "AI Assistant",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    "Help with reports, points, and status",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: scheme.onSurface,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: scheme.primary,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
 

@@ -97,6 +97,31 @@ class GuestHomeScreen extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const GuestAiScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: const Icon(Icons.smart_toy_outlined),
+            label: Text(
+              "Ask AI About KifTari2",
+              style: textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+              ),
+            ),
+          ),
           _InfoCard(
             icon: Icons.verified_outlined,
             title: "Welcome to KifTari2",
@@ -127,29 +152,6 @@ class GuestHomeScreen extends StatelessWidget {
             title: "Ready to report?",
             description:
                 "Create an account to submit reports and track progress.",
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const GuestAiScreen(),
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-            child: Text(
-              "Ask AI About KifTari2",
-              style: textTheme.labelLarge?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
           ),
         ],
       ),

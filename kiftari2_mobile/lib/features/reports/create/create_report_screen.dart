@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'package:kiftari2/features/reports/success/report_success_screen.dart';
+import 'package:kiftari2/core/services/ai_service.dart';
 import 'package:kiftari2/core/services/report_service.dart';
 import 'package:kiftari2/core/services/token_service.dart';
 import 'package:kiftari2/utils/permission_helper.dart';
@@ -23,6 +24,7 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   bool locationCaptured = false;
   bool imageAdded = false;
   bool loading = false;
+  bool _aiLoading = false;
 
   double? latitude;
   double? longitude;
@@ -126,6 +128,104 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         );
       },
     );
+  }
+
+  // ================= AI HELP =================
+  Future<void> _improveDescriptionWithAi() async {
+    if (_aiLoading) return;
+
+    final input = descriptionController.text.trim();
+    if (input.isEmpty) {
+      _toast("Please write a description first.");
+      return;
+    }
+
+    setState(() => _aiLoading = true);
+
+    try {
+      final improved = await AiService.sendMessage(
+        message: input,
+        context: "create_report",
+      );
+
+      if (!mounted) return;
+
+      final apply = await showModalBottomSheet<bool>(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          final textTheme = Theme.of(context).textTheme;
+
+          return SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "AI suggestion",
+                    style: textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "AI suggestions only. Review before applying.",
+                    style: textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceVariant,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      improved,
+                      style: textTheme.bodyMedium,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text("Cancel"),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text("Use this text"),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+
+      if (apply == true) {
+        descriptionController.text = improved;
+      }
+    } catch (_) {
+      if (mounted) {
+        _toast("AI service is temporarily unavailable.");
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _aiLoading = false);
+      }
+    }
   }
 
   // ================= SUBMIT =================
@@ -327,6 +427,35 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           _label("Description"),
           _inputField(descriptionController, "Describe the issue",
               maxLines: 4),
+
+          const SizedBox(height: 10),
+
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  "AI suggestions only.",
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              OutlinedButton(
+                onPressed: _aiLoading ? null : _improveDescriptionWithAi,
+                child: _aiLoading
+                    ? SizedBox(
+                        height: 16,
+                        width: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: scheme.primary,
+                        ),
+                      )
+                    : const Text("Improve description with AI"),
+              ),
+            ],
+          ),
 
           const SizedBox(height: 28),
 
